@@ -1,6 +1,6 @@
-import Websocket from './websocket/websocket'
+import Websocket from './modules/websocket/websocket'
 import { createServer } from 'http'
-import GameSocket from './websocket/game.socket'
+import GameSocket from './modules/websocket/game.socket'
 require('dotenv').config()
 import 'reflect-metadata'
 
