@@ -4,3 +4,6 @@
 # .env files
 .env*.local
 .env
+
+# build assets
+/dist
