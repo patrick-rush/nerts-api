@@ -2,6 +2,7 @@ import { Socket } from "socket.io"
 import MySocketInterface from "./mySocketInterface"
 
 import { MongoClient, ServerApiVersion } from 'mongodb'
+import GameService from "../../libs/game.service"
 
 var globalGamestate = globalGamestate || []
 
@@ -28,6 +29,14 @@ class GameSocket implements MySocketInterface {
         // }
         
         socket.emit('ping', 'Hi! I am a live socket connection')
+
+        socket.on('add_to_lake', (msg) => {
+            console.log(msg)
+            const { code, playerId, cardToMove, destination } = msg
+            let gameService = new GameService()
+            const updatedLake = gameService.addCardToLake({code, playerId, cardToMove, destination})
+        })
+
         // socket.on('game', (msg) => {
         //     globalGamestate.push(msg)
         //     console.log(">>> globalGamestate after message", globalGamestate)

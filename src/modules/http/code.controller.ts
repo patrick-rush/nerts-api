@@ -6,7 +6,7 @@ var globalGamestate = globalGamestate || new Map()
 @JsonController('/code', { transformResponse: true })
 class CodeController {
 
-    @Get('/')
+    @Post('/')
     createGameCode(@Req() request: any, @Res() response: any) {
         let codeService = new CodeService()
         const gameCode = codeService.generateCode()
