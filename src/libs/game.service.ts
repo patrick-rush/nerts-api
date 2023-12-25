@@ -1,9 +1,15 @@
-import { ranks, suits } from "../constants/nerts";
+import { CardSource, ranks, suits } from "../constants/nerts";
 import Websocket from "../modules/websocket/websocket";
 import { v4 as uuidv4 } from 'uuid';
-import { Card } from "../types/nerts";
+import type { Card, Deal, Gamestate } from "../types/nerts";
 
-var globalGamestate = globalGamestate || new Map()
+// @ts-ignore: Unreachable code error
+if (!global.globalGamestate) {
+    // @ts-ignore: Unreachable code error
+    global.globalGamestate = new Map<string, Gamestate>()
+}
+// @ts-ignore: Unreachable code error
+var globalGamestate: Map<string, Gamestate> = global.globalGamestate
 class GameService {
 
     public connectGame(code: string) {
@@ -43,8 +49,8 @@ class GameService {
         }
         const lakeAdditions = Array.from({ length: 4 }, () => [])
         const game = globalGamestate.get(code)
-        game.players.push(newPlayer)
-        game.lake.push(...lakeAdditions)
+        game?.players.push(newPlayer)
+        game?.lake.push(...lakeAdditions)
         return newPlayer
     }
 
@@ -52,10 +58,10 @@ class GameService {
         return globalGamestate.get(code)
     }
 
-    public addCardToLake({ code, playerId, cardToMove, destination }) {
+    public addCardToLake({ code, playerId, cardToMove, destination }: { code: string, playerId: string, cardToMove: Card, destination: number }) {
         console.log("adding card to Lake", code, playerId, cardToMove, destination);
         const stateOfGame = globalGamestate.get(code)
-        const lakeLength = stateOfGame.lake?.length
+        const lakeLength = stateOfGame?.lake?.length || 0
         let finalDestination = destination
         let isCompatible = false
 
@@ -71,31 +77,49 @@ class GameService {
         } else {
             isCompatible = this.checkLakeCompatibility({ code, cardToMove, destination })
         }
-        // console.log("finalDestination", finalDestination)
-        // console.log("isCompatible", isCompatible)
-        if (isCompatible) stateOfGame.lake[finalDestination]?.push(cardToMove)
-        // console.log("stateOfGame", stateOfGame)
+        if (isCompatible) stateOfGame?.lake[finalDestination]?.push(cardToMove)
+
         return stateOfGame
     }
 
-    public moveCard({ code, to, from }) {
-        const stateOfGame = this.getGame(code)
-        const player = stateOfGame.players.find((player) => player.id = to.playerId) // TODO: define player
-        const card = player.deal[from.source].pop()
-        player.deal[to.destination].push(card)
-    }
-
-
     public updatePiles({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: Card[] | Card[][] }[] }) {
         piles.forEach(pile => {
+            if (pile.location === CardSource.Lake) return
             const deal = this.getGame(code)?.players.find(player => player.id === playerId)?.deal
-            deal[pile.location] = pile.updatedPile
-            deal[pile.location]
+            if (!deal) return
+            if (pile.location === CardSource.River) {
+                const pileToUpdate = pile.updatedPile as Card[][]
+                this.updateRiver({ deal, pile: pileToUpdate})
+            }
+            else {
+                const pileToUpdate = pile.updatedPile as Card[]
+                this.updateOther({ deal, pile: pileToUpdate, location: pile.location })
+            }
         })
         return this.getGame(code)
     }
 
-    private generateGameCode() {
+    private updateRiver({ deal, pile }: { deal: Deal; pile: Card[][] }) {
+        deal.river = pile
+    }
+
+    private updateOther({ deal, pile, location }: { deal: Deal; pile: Card[]; location: string }) {
+        switch (location) {
+            case CardSource.Waste:
+                deal.waste = pile
+                break
+            case CardSource.Stream:
+                deal.stream = pile
+                break
+            case CardSource.Nert:
+                deal.nertStack = pile
+                break
+            default:
+                throw new Error("Location is not compatible. Unable to update piles.")
+        }
+    }
+
+    private generateGameCode(): string {
         let code = (Math.floor(Math.random() * 1000000)).toString().padStart(6, '0')
         if (globalGamestate.has(code)) return this.generateGameCode()
         return code
@@ -120,7 +144,7 @@ class GameService {
             shuffledDeck.splice(0, 1),
         ]
         const stream = shuffledDeck
-        const waste = []
+        const waste: Card[] = []
         return {
             nertStack,
             river,
@@ -130,13 +154,14 @@ class GameService {
     }
 
     private checkLakeCompatibility({ code, cardToMove, destination }: { code: string; cardToMove: Card; destination: number; }) {
-        const pile = globalGamestate.get(code).lake[destination]
-        const topCard = pile[pile.length - 1]
+        // if (!globalGamestate) return
+        const pile = globalGamestate?.get(code)?.lake[destination]
+        const topCard = pile?.[pile.length - 1]
         console.log("topCard", topCard)
         if (cardToMove.rank.position === 1) return !topCard
 
-        const isOneMore = cardToMove.rank.position - 1 === topCard.rank.position
-        const isSameSuit = cardToMove.suit.name === topCard.suit.name
+        const isOneMore = cardToMove.rank.position - 1 === topCard?.rank.position
+        const isSameSuit = cardToMove.suit.name === topCard?.suit.name
         return isOneMore && isSameSuit
     }
 

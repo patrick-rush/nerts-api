@@ -16,3 +16,20 @@ export interface Card {
     suit: Suit;
     rank: RankDetails;
 }
+
+export interface Deal {
+    nertStack: Card[];
+    river: Card[][];
+    stream: Card[];
+    waste: Card[];
+}
+export interface Player {
+    id: string;
+    name: string;
+    deal: Deal;
+}
+export interface Gamestate {
+    startedAt: Date | string;
+    players: Player[];
+    lake: Card[][];
+}

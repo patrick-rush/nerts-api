@@ -2,6 +2,7 @@
   "compilerOptions": {
       "module": "commonjs",
       "esModuleInterop": true,
+      // "strict": true,
       "target": "ES2015",
       "moduleResolution": "node",
       "sourceMap": true,
@@ -12,6 +13,6 @@
   "lib": [
       "es2015"
   ],
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "src/types/*.d.ts"],
   "exclude": ["node_modules"]
 }
