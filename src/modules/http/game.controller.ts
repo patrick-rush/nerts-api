@@ -5,9 +5,10 @@ import GameService from "../../libs/game.service"
 class GameController {
 
     @Post('/')
-    insertGame(@Body() game: any) {
+    connect(@QueryParam("code") code: string) {
+        console.log(">>> code in create", code)
         let gameService = new GameService()
-        gameService.insertGame(game)
+        gameService.connectGame(code)
         return {
             status: 200,
             success: true
@@ -43,16 +44,6 @@ class GameController {
         }
     }
 
-    @Get('/players')
-    getPlayers(@QueryParam("code") code: string) {
-        let gameService = new GameService()
-        let players = gameService.getPlayers(code)
-        return {
-            status: 200,
-            success: true,
-            players: players
-        }
-    }
 }
 
 export default GameController

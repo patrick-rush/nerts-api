@@ -3,44 +3,44 @@ import MySocketInterface from "./mySocketInterface"
 
 import { MongoClient, ServerApiVersion } from 'mongodb'
 import GameService from "../../libs/game.service"
+import { Card } from "../../types/nerts"
 
-var globalGamestate = globalGamestate || []
+// var globalGamestate = globalGamestate || new Map{}
 
 class GameSocket implements MySocketInterface {
     
     async handleConnection(socket: Socket) {
-        // const uri = `mongodb+srv://nerts_admin:${encodeURIComponent(process.env.MONGO_DB_PASSWORD)}@nerts.kyvvyac.mongodb.net/?retryWrites=true&w=majority`
-        // const client = new MongoClient(uri, {
-        //     serverApi: {
-        //         version: ServerApiVersion.v1,
-        //         strict: true,
-        //         deprecationErrors: true
-        //     }
-        // })
-        // console.log("uri:", uri)
-        // try {
-        //     await client.connect()
-        //     await client.db("nerts_db").command({ ping: 1 })
-        //     console.log("pinged db")
-        // } catch (err) {
-        //     console.error("error connecting to db")
-        // } finally {
-        //     await client.close()
-        // }
         
+        socket.on('request_game', ({ code, playerId }: { code: string; playerId: string; }, callback: (...args: any) => any) => {
+            // join room
+            socket.join(code)
+            const gameService = new GameService()
+            const game = gameService.getGame(code)
+            callback({
+                game: game
+            })
+            console.log("request_game")
+        })
+
         socket.emit('ping', 'Hi! I am a live socket connection')
 
         socket.on('add_to_lake', (msg) => {
-            console.log(msg)
+            console.log("msg in add_to_lake", msg)
             const { code, playerId, cardToMove, destination } = msg
             let gameService = new GameService()
             const updatedLake = gameService.addCardToLake({code, playerId, cardToMove, destination})
+            // console.log("emitting event to code:", code)
+            socket.to(code).emit('update_lake', { data: updatedLake })
         })
 
-        // socket.on('game', (msg) => {
-        //     globalGamestate.push(msg)
-        //     console.log(">>> globalGamestate after message", globalGamestate)
-        // })
+        socket.on('update_piles', ({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: Card[] | Card[][] }[] }) => {
+            console.log("event received")
+            let gameService = new GameService()
+            const updatedLake = gameService.updatePiles({ code, playerId, piles })
+            console.log("updated lake", updatedLake)
+            socket.to(code).emit('update_lake', { data: updatedLake })
+        })
+
     }
 
 //    //optional middleware implementation
