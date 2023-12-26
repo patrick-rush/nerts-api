@@ -13,6 +13,7 @@ export interface RankDetails {
 }
 
 export interface Card {
+    lookup: number;
     suit: Suit;
     rank: RankDetails;
 }

@@ -1,4 +1,4 @@
-import { CardSource, ranks, suits } from "../constants/nerts";
+import { CardSource, cardLookup, deck } from "../constants/nerts";
 import Websocket from "../modules/websocket/websocket";
 import { v4 as uuidv4 } from 'uuid';
 import type { Card, Deal, Gamestate } from "../types/nerts";
@@ -30,6 +30,7 @@ class GameService {
             deal,
         }
         players.push(newPlayer)
+        console.log("New player's deal:", newPlayer.deal)
         globalGamestate.set(gameCode, {
             startedAt: new Date(),
             lake: Array.from({ length: 4 }, () => []),
@@ -78,41 +79,51 @@ class GameService {
             isCompatible = this.checkLakeCompatibility({ code, cardToMove, destination })
         }
         if (isCompatible) stateOfGame?.lake[finalDestination]?.push(cardToMove)
-
-        return stateOfGame
+        const serializedLake = stateOfGame?.lake?.map(pile => {
+            return pile.map(card => card.lookup)
+        })
+        return serializedLake
     }
 
-    public updatePiles({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: Card[] | Card[][] }[] }) {
+    public updatePiles({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: number[] | number[][] }[] }) {
         piles.forEach(pile => {
             if (pile.location === CardSource.Lake) return
             const deal = this.getGame(code)?.players.find(player => player.id === playerId)?.deal
             if (!deal) return
             if (pile.location === CardSource.River) {
-                const pileToUpdate = pile.updatedPile as Card[][]
+                const pileToUpdate = pile.updatedPile as number[][]
                 this.updateRiver({ deal, pile: pileToUpdate})
             }
             else {
-                const pileToUpdate = pile.updatedPile as Card[]
+                const pileToUpdate = pile.updatedPile as number[]
                 this.updateOther({ deal, pile: pileToUpdate, location: pile.location })
             }
         })
-        return this.getGame(code)
+        console.log(globalGamestate.get(code).players.find(player => player.id === playerId))
+        const serializedLake = this.getGame(code)?.lake?.map(pile => {
+            return pile.map(card => card.lookup)
+        })
+        return serializedLake
     }
 
-    private updateRiver({ deal, pile }: { deal: Deal; pile: Card[][] }) {
-        deal.river = pile
+    private deserializePile(pile: number[]) {
+        return pile.map((card: number) => cardLookup[card])
     }
 
-    private updateOther({ deal, pile, location }: { deal: Deal; pile: Card[]; location: string }) {
+    private updateRiver({ deal, pile: river }: { deal: Deal; pile: number[][] }) {
+        deal.river = river.map((pile: number[]) => this.deserializePile(pile))
+    }
+
+    private updateOther({ deal, pile, location }: { deal: Deal; pile: number[]; location: string }) {
         switch (location) {
             case CardSource.Waste:
-                deal.waste = pile
+                deal.waste = this.deserializePile(pile)
                 break
             case CardSource.Stream:
-                deal.stream = pile
+                deal.stream = this.deserializePile(pile)
                 break
             case CardSource.Nert:
-                deal.nertStack = pile
+                deal.nertStack = this.deserializePile(pile)
                 break
             default:
                 throw new Error("Location is not compatible. Unable to update piles.")
@@ -127,15 +138,8 @@ class GameService {
 
     private dealCards() {
         const shuffle = (array: Card[]) => array.sort(() => 0.5 - Math.random())
-        const deck = suits.flatMap(suit => {
-            return ranks.map(rank => {
-                return {
-                    suit,
-                    rank,
-                }
-            })
-        })
-        const shuffledDeck: Card[] = shuffle(deck)
+        const freshDeck = [...deck]
+        const shuffledDeck: Card[] = shuffle(freshDeck)
         const nertStack = shuffledDeck.splice(0, 13)
         const river = [
             shuffledDeck.splice(0, 1),

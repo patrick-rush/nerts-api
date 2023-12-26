@@ -33,7 +33,7 @@ class GameSocket implements MySocketInterface {
             socket.to(code).emit('update_lake', { data: updatedLake })
         })
 
-        socket.on('update_piles', ({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: Card[] | Card[][] }[] }) => {
+        socket.on('update_piles', ({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: number[] | number[][] }[] }) => {
             console.log("event received")
             let gameService = new GameService()
             const updatedLake = gameService.updatePiles({ code, playerId, piles })
