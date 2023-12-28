@@ -13,13 +13,10 @@ var globalGamestate: Map<string, Gamestate> = global.globalGamestate
 class GameService {
 
     public connectGame(code: string) {
-        // responsible for initial connection
         console.log(">>> initial connection", code)
     }
 
     public createGame(name: string) {
-        console.log(">>> creating new game")
-
         const gameCode = this.generateGameCode()
         const playerId = uuidv4()
         const players = []
@@ -30,7 +27,6 @@ class GameService {
             deal,
         }
         players.push(newPlayer)
-        console.log("New player's deal:", newPlayer.deal)
         globalGamestate.set(gameCode, {
             startedAt: new Date(),
             lake: Array.from({ length: 4 }, () => []),
@@ -60,9 +56,9 @@ class GameService {
     }
 
     public addCardToLake({ code, playerId, cardToMove, destination }: { code: string, playerId: string, cardToMove: Card, destination: number }) {
-        console.log("adding card to Lake", code, playerId, cardToMove, destination);
         const stateOfGame = globalGamestate.get(code)
-        const lakeLength = stateOfGame?.lake?.length || 0
+        if (!stateOfGame) return
+        const lakeLength = stateOfGame.lake?.length || 0
         let finalDestination = destination
         let isCompatible = false
 
@@ -78,31 +74,38 @@ class GameService {
         } else {
             isCompatible = this.checkLakeCompatibility({ code, cardToMove, destination })
         }
-        if (isCompatible) stateOfGame?.lake[finalDestination]?.push(cardToMove)
-        const serializedLake = stateOfGame?.lake?.map(pile => {
+        if (isCompatible) stateOfGame.lake[finalDestination]?.push(cardToMove)
+        const serializedLake = stateOfGame.lake?.map(pile => {
             return pile.map(card => card.lookup)
         })
         return serializedLake
     }
 
     public updatePiles({ code, playerId, piles }: { code: string; playerId: string; piles: { location: string, updatedPile: number[] | number[][] }[] }) {
-        piles.forEach(pile => {
-            if (pile.location === CardSource.Lake) return
-            const deal = this.getGame(code)?.players.find(player => player.id === playerId)?.deal
-            if (!deal) return
+        const gameCopy = this.getGame(code)
+        if (!gameCopy) return
+
+        const player = gameCopy.players.find(p => p.id === playerId)
+        if (!player || !player.deal) return
+
+        const deal = player.deal
+
+        for(const pile of piles) {
+            if (pile.location === CardSource.Lake) continue
+
             if (pile.location === CardSource.River) {
-                const pileToUpdate = pile.updatedPile as number[][]
-                this.updateRiver({ deal, pile: pileToUpdate})
+                this.updateRiver({ deal, pile: pile.updatedPile as number[][] })
+            } else {
+                this.updateOther({ deal, pile: pile.updatedPile as number[], location: pile.location })
             }
-            else {
-                const pileToUpdate = pile.updatedPile as number[]
-                this.updateOther({ deal, pile: pileToUpdate, location: pile.location })
-            }
-        })
-        console.log(globalGamestate.get(code).players.find(player => player.id === playerId))
-        const serializedLake = this.getGame(code)?.lake?.map(pile => {
-            return pile.map(card => card.lookup)
-        })
+        }
+        
+        player.deal = deal
+        gameCopy.players = gameCopy.players.map(oldPlayer => oldPlayer.id === playerId ? player : oldPlayer)
+        globalGamestate.set(code, gameCopy)
+
+        const serializedLake = gameCopy.lake?.map(pile => pile.map(card => card.lookup))
+
         return serializedLake
     }
 
@@ -158,10 +161,10 @@ class GameService {
     }
 
     private checkLakeCompatibility({ code, cardToMove, destination }: { code: string; cardToMove: Card; destination: number; }) {
-        // if (!globalGamestate) return
-        const pile = globalGamestate?.get(code)?.lake[destination]
+        const lake = globalGamestate?.get(code)?.lake
+        if (!lake) return
+        const pile = lake[destination]
         const topCard = pile?.[pile.length - 1]
-        console.log("topCard", topCard)
         if (cardToMove.rank.position === 1) return !topCard
 
         const isOneMore = cardToMove.rank.position - 1 === topCard?.rank.position
