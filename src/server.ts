@@ -8,6 +8,7 @@ import {
    createExpressServer,
    RoutingControllersOptions
 } from 'routing-controllers'
+import CleanupJob from './modules/cron/cleanup'
 
 const port = process.env.APP_PORT || 3001
 
@@ -30,3 +31,6 @@ io.initializeHandlers([
 httpServer.listen(port, () => {
    console.log(`This is working in port ${port}`)
 })
+
+const cleanup = new CleanupJob()
+cleanup.start()
