@@ -28,7 +28,12 @@ class CleanupJob {
     }
 
     private async cleanup() {
-        console.log("Checking %d game(s) in Global Gamestate for EOL.", global.globalGamestate.size);
+        const currentGamesRunning = global.globalGamestate.size
+        if (!currentGamesRunning) {
+            console.log("There are 0 games to check. Ending cleanup job.")
+            return
+        }
+        console.log("Checking %d game(s) in Global Gamestate for EOL.", currentGamesRunning);
         const iterator = globalGamestate[Symbol.iterator]()
     
         let twoDaysAgo = new Date()
