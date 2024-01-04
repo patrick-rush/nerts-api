@@ -30,6 +30,7 @@ class GameSocket implements MySocketInterface {
             let gameService = new GameService()
             const updatedLake = gameService.addCardToLake({code, playerId, cardToMove, destination})
             // console.log("emitting event to code:", code)
+            // TODO: needs to be updated to send scores when updates to lake are made
             socket.to(code).emit('update_lake', { data: updatedLake })
         })
 

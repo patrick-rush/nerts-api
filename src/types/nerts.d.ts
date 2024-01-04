@@ -28,6 +28,7 @@ export interface Player {
     id: string;
     name: string;
     deal: Deal;
+    score: number;
 }
 export interface Gamestate {
     startedAt: Date | string;

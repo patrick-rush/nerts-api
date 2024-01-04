@@ -1,4 +1,4 @@
-import { CardSource, cardLookup, deck } from "../constants/nerts";
+import { CardPosition, CardSource, cardLookup, deck } from "../constants/nerts";
 import Websocket from "../modules/websocket/websocket";
 import { v4 as uuidv4 } from 'uuid';
 import type { Card, Deal, Gamestate } from "../types/nerts";
@@ -25,6 +25,7 @@ class GameService {
             id: playerId,
             name,
             deal,
+            score: 0,
         }
         players.push(newPlayer)
         globalGamestate.set(gameCode, {
@@ -43,6 +44,7 @@ class GameService {
             id: playerId,
             name,
             deal,
+            score: 0,
         }
         const lakeAdditions = Array.from({ length: 4 }, () => [])
         const game = globalGamestate.get(code)
@@ -74,7 +76,11 @@ class GameService {
         } else {
             isCompatible = this.checkLakeCompatibility({ code, cardToMove, destination })
         }
-        if (isCompatible) stateOfGame.lake[finalDestination]?.push(cardToMove)
+        if (isCompatible) {
+            stateOfGame.lake[finalDestination]?.push(cardToMove)
+            this.updateGamePoints({ code, playerId, cardToMove })
+        }
+
         const serializedLake = stateOfGame.lake?.map(pile => {
             return pile.map(card => card.lookup)
         })
@@ -170,6 +176,19 @@ class GameService {
         const isOneMore = cardToMove.rank.position - 1 === topCard?.rank.position
         const isSameSuit = cardToMove.suit.name === topCard?.suit.name
         return isOneMore && isSameSuit
+    }
+
+    private updateGamePoints({ code, playerId, cardToMove }) {
+        console.log(">>> globalGamestate before", globalGamestate.get(code))
+        const isKing = cardToMove.rank === CardPosition.King
+        const game = globalGamestate.get(code)
+        const players = game.players.map(player => {
+            if (player.id === playerId) player.score = player.score + (isKing ? 3 : 1)
+            return player
+        })
+        game.players = players
+        globalGamestate.set(code, game)
+        console.log(">>> globalGamestate after", globalGamestate.get(code))
     }
 
 }
